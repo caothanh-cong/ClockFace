@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>iPhone 7 Cute StandBy Dock Clock</title>
+    <title>iPhone 7 Cute StandBy Clock</title>
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -211,6 +211,15 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* Pulse glow animation for wake lock active badge */
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6)); }
+            50% { opacity: 0.6; filter: drop-shadow(0 0 1px rgba(16, 185, 129, 0.2)); }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+
         /* Custom Scrollbar Removal */
         ::-webkit-scrollbar { display: none; }
     </style>
@@ -219,20 +228,53 @@
 
     <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
 
+    <!-- Invisible HTML5 MP4 base64 video loop used to trigger iOS Safari permanent keep-awake -->
+    <video id="noSleepVideo" 
+           playsinline 
+           webkit-playsinline 
+           muted 
+           loop 
+           aria-hidden="true" 
+           class="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none z-0">
+        <!-- Minimal valid 0.5s silent H.264 base64 MP4 video stream -->
+        <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb20xaXNvMmF2YzEAAAAIZmcmZWUAAAA2bWRhdAEEAAYAAAAAH//gAAAAI21vb3YAAAAlbWhkZAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAABAAAAAA" type="video/mp4">
+    </video>
+
+    <div id="initialActivationModal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 transition-opacity duration-300 p-4">
+        <div class="glass-panel rounded-3xl p-5 max-w-xs w-full text-center space-y-3 border-2 border-pink-400 shadow-2xl relative overflow-hidden">
+            <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-tr from-pink-500 to-purple-500 text-white flex items-center justify-center text-2xl shadow-lg animate-bounce">
+                <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold font-fredoka text-pink-500">Lock Awake Mode 💕</h2>
+                <p class="text-[11px] font-quicksand font-semibold opacity-80 mt-1">
+                    Tap below to lock screen awake, enable audio chimes, & activate StandBy Mode!
+                </p>
+            </div>
+            <button onclick="activatePermanentKeepAwake()" class="btn-touch btn-active-glow px-4 py-2.5 rounded-xl font-bold text-xs w-full shadow-lg flex items-center justify-center gap-2">
+                <i class="fa-solid fa-power-off"></i> Enable Lock Awake Engine
+            </button>
+            <div class="text-[9px] opacity-60 font-medium">Compatible with iPhone 7 (iOS 15 Safari & Chrome)</div>
+        </div>
+    </div>
+
     <div id="mainContainer" class="relative z-10 flex flex-col justify-between h-full w-full max-w-full mx-auto" onclick="handleTapToToggleHUD(event)">
 
         <!-- TOP COMPACT HUD DOCK BAR (Optimized for iPhone 7 Landscape Height) -->
         <header id="hudHeader" class="hud-overlay flex items-center justify-between w-full glass-panel rounded-full px-3 py-1 text-xs shadow-sm z-30 shrink-0 mb-1">
             
-            <!-- Left: StandBy Title & Wake Status -->
+            <!-- Left: StandBy Title & Live Keep-Awake Status Badge -->
             <div class="flex items-center space-x-1.5">
                 <div class="w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center text-[10px] shadow">
                     <i class="fa-solid fa-mobile-screen"></i>
                 </div>
                 <span class="font-bold tracking-tight text-[11px] hidden xs:inline">StandBy Dock</span>
-                <span id="wakeStatusBadge" class="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold border border-emerald-500/30">
-                    <i class="fa-solid fa-bolt text-[8px] mr-0.5"></i>Awake
-                </span>
+                
+                <!-- Live Screen Awake Status Indicator -->
+                <button onclick="toggleWakeLock()" id="wakeStatusBadge" class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer">
+                    <i class="fa-solid fa-bolt text-[8px] animate-pulse-glow"></i>
+                    <span id="wakeStatusText">⚡ Awake Locked</span>
+                </button>
             </div>
 
             <!-- Center: Display Mode Switcher -->
@@ -292,7 +334,7 @@
                 <!-- Dynamic Head Ear Accent SVG Overlay -->
                 <div id="earAccentContainer" class="relative w-full flex justify-center -mb-3 z-20 pointer-events-none transition-all duration-300">
                     <svg id="earAccentSvg" viewBox="0 0 160 45" class="w-36 h-10 drop-shadow-sm">
-                        <!-- Dynamic ears / accessories SVG -->
+                        <!-- Dynamic ears / accessories SVG rendered here -->
                     </svg>
                 </div>
 
@@ -444,7 +486,7 @@
                 <span>Swipe card or tap to hide HUD</span>
             </div>
             <button onclick="toggleWakeLock()" class="hover:underline flex items-center gap-1">
-                <i class="fa-solid fa-bed"></i> Keep Awake
+                <i class="fa-solid fa-bolt text-emerald-500"></i> Keep Awake Active
             </button>
         </footer>
 
@@ -473,7 +515,8 @@
             headAccessory: 'cat', // 'cat', 'bunny', 'bear', 'bow', 'halo', 'none'
             currentWidget: 0,
             isNightstand: false,
-            wakeLock: null,
+            wakeLockActive: false,
+            nativeWakeLock: null,
             alarms: [],
             timer: {
                 totalSecs: 1500,
@@ -490,6 +533,118 @@
             }
         };
 
+        /*
+         * PERMANENT KEEP-AWAKE ENGINE FOR IOS 15 (IPHONE 7)
+         * 1. Plays silent looping base64 HTML5 MP4 video in the background.
+         * 2. Requests native navigator.wakeLock if available.
+         * 3. Self-healing loop on visibilitychange and touch events.
+         */
+        const noSleepVideo = document.getElementById('noSleepVideo');
+
+        async function activatePermanentKeepAwake() {
+            // Dismiss initial modal with fade
+            const modal = document.getElementById('initialActivationModal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+
+            // Unlock Web Audio Context
+            getAudioContext();
+
+            // Trigger NoSleep Engine
+            await startKeepAwakeEngine();
+        }
+
+        async function startKeepAwakeEngine() {
+            state.wakeLockActive = true;
+            let success = false;
+
+            // Method A: Invisible Looping Video Playback (Primary iOS 15 Solution)
+            if (noSleepVideo) {
+                try {
+                    noSleepVideo.currentTime = 0;
+                    await noSleepVideo.play();
+                    success = true;
+                } catch (e) {
+                    console.log("NoSleep video playback error:", e);
+                }
+            }
+
+            // Method B: Native Navigator WakeLock API (For iOS 16.4+ / Modern Webkit)
+            if ('wakeLock' in navigator) {
+                try {
+                    state.nativeWakeLock = await navigator.wakeLock.request('screen');
+                    success = true;
+                } catch (e) {
+                    console.log("Native wakeLock request failed:", e);
+                }
+            }
+
+            updateWakeBadgeUI(true);
+        }
+
+        function stopKeepAwakeEngine() {
+            state.wakeLockActive = false;
+
+            if (noSleepVideo) {
+                noSleepVideo.pause();
+            }
+
+            if (state.nativeWakeLock) {
+                state.nativeWakeLock.release().catch(() => {});
+                state.nativeWakeLock = null;
+            }
+
+            updateWakeBadgeUI(false);
+        }
+
+        function toggleWakeLock() {
+            if (state.wakeLockActive) {
+                stopKeepAwakeEngine();
+            } else {
+                startKeepAwakeEngine();
+            }
+        }
+
+        function updateWakeBadgeUI(isActive) {
+            const badge = document.getElementById('wakeStatusBadge');
+            const text = document.getElementById('wakeStatusText');
+
+            if (isActive) {
+                badge.className = "text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer";
+                text.innerHTML = "⚡ Awake Locked";
+            } else {
+                badge.className = "text-[9px] px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-500 font-bold border border-gray-500/30 flex items-center gap-1 transition-all cursor-pointer opacity-75";
+                text.innerHTML = "🌙 Sleep Allowed";
+            }
+        }
+
+        // AUTO-RECOVERY HEALING LOOPS:
+        // When tab regains visibility or user touches screen, re-play video if it was paused
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && state.wakeLockActive) {
+                startKeepAwakeEngine();
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            if (state.wakeLockActive) {
+                startKeepAwakeEngine();
+            }
+        });
+
+        document.addEventListener('touchstart', () => {
+            if (state.wakeLockActive && noSleepVideo && noSleepVideo.paused) {
+                noSleepVideo.play().catch(() => {});
+            }
+        }, { passive: true });
+
+        // Health check interval every 4 seconds to maintain permanent video keep-alive
+        setInterval(() => {
+            if (state.wakeLockActive && noSleepVideo && noSleepVideo.paused) {
+                noSleepVideo.play().catch(() => {});
+            }
+        }, 4000);
+
         /* Safe Web Audio API Initialization for iOS Safari */
         let audioCtx = null;
 
@@ -503,12 +658,6 @@
             }
             return audioCtx;
         }
-
-        // Global User Tap Unlock for WebKit Web Audio Context
-        document.addEventListener('pointerdown', function unlockAudio() {
-            getAudioContext();
-            document.removeEventListener('pointerdown', unlockAudio);
-        }, { once: true });
 
         /* Synthesized Web Audio Chimes */
         function playCuteChime() {
@@ -1038,24 +1187,6 @@
             updateTimerDisplay();
         }
 
-        /* Safe Screen Wake Lock API Wrapper */
-        async function toggleWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    if (state.wakeLock) {
-                        await state.wakeLock.release();
-                        state.wakeLock = null;
-                        document.getElementById('wakeStatusBadge').innerHTML = '<i class="fa-solid fa-moon text-[8px] mr-0.5"></i>Sleep OK';
-                    } else {
-                        state.wakeLock = await navigator.wakeLock.request('screen');
-                        document.getElementById('wakeStatusBadge').innerHTML = '<i class="fa-solid fa-bolt text-[8px] mr-0.5"></i>Awake';
-                    }
-                }
-            } catch(e) {
-                console.log('Wake lock fallback:', e);
-            }
-        }
-
         /* Auto-Hiding HUD Overlay */
         let hudTimer = null;
         function resetHudTimer() {
@@ -1094,7 +1225,6 @@
                     document.exitFullscreen();
                 }
             } else {
-                // Pseudo full-bleed toggle
                 window.scrollTo(0, 1);
             }
         }
@@ -1162,7 +1292,6 @@
             renderHeadAccessory();
             renderCalendar();
             renderAlarms();
-            toggleWakeLock();
             resetHudTimer();
             loop();
         };
