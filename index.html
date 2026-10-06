@@ -1,1300 +1,357 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full w-full overflow-hidden">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>iPhone 7 Cute StandBy Clock</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>StandBy Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Nunito:wght@900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#b9c4ff;
+  --white:#f5f5f7;
+  --dim:1;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{
+  position:fixed;inset:0;width:100%;height:100%;
+  background:#000;color:var(--white);overflow:hidden;
+  overscroll-behavior:none;touch-action:manipulation;
+  -webkit-user-select:none;user-select:none;
+  font-family:-apple-system,"SF Pro Display","Helvetica Neue",sans-serif;
+}
+body.night{--accent:#e5322d;--white:#e5322d;--dim:.55}
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Canvas Confetti -->
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+/* Stage: true centering inside safe areas */
+#stage{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  opacity:var(--dim);transition:opacity .5s ease;
+}
+.view{display:none;align-items:center;justify-content:center}
+.view.on{display:flex}
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        outfit: ['Outfit', 'sans-serif'],
-                        fredoka: ['Fredoka', 'sans-serif'],
-                        quicksand: ['Quicksand', 'sans-serif']
-                    },
-                    colors: {
-                        standbyRed: '#ff2a4b',
-                    }
-                }
-            }
-        }
-    </script>
+/* ---------- Classic: big time left, info column right ---------- */
+#classic{gap:4vw}
+.time{
+  display:flex;align-items:center;
+  font-family:"Barlow Condensed","Arial Narrow",sans-serif;font-weight:600;
+  font-size:min(66vh,30vw);height:.72em;line-height:.72;
+  letter-spacing:-.01em;color:var(--accent);
+  font-variant-numeric:tabular-nums;
+}
+.time .d{display:inline-block;text-align:center}
+.colon{display:flex;flex-direction:column;gap:.17em;margin:0 .05em}
+.colon i{display:block;width:.115em;height:.115em;border-radius:50%;background:var(--accent)}
+.side{
+  align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;
+  height:min(47.5vh,21.6vw);min-width:20vw;
+  font-size:min(8.5vh,4.2vw);font-weight:500;line-height:1.15;
+}
+.side b{font-weight:500;color:var(--accent);margin-right:.25em}
+.side .sub{margin-top:.1em;opacity:.95}
+.alarm{display:none;font-size:.95em}
+.alarm.on{display:block}
+.alarm svg{display:block;width:.9em;height:.9em;fill:var(--accent);margin-bottom:.2em}
+.alarm small{font-size:.65em;font-weight:500}
 
-    <style>
-        /* iPhone 7 Viewport Bounds & Safe Area Insets */
-        :root {
-            --sat: env(safe-area-inset-top, 0px);
-            --sab: env(safe-area-inset-bottom, 0px);
-            --sal: env(safe-area-inset-left, 0px);
-            --sar: env(safe-area-inset-right, 0px);
+/* ---------- Big: full-screen rounded numerals ---------- */
+#big{width:100%;height:100%}
+#bigTime{
+  display:flex;align-items:center;justify-content:center;
+  font-family:"Nunito","SF Pro Rounded",system-ui,sans-serif;font-weight:900;
+  font-size:min(92vh,40vw);line-height:.8;letter-spacing:-.04em;
+  color:var(--accent);
+}
+#bigTime span:nth-child(even){opacity:.62}
+#bigTime .c{display:flex;flex-direction:column;gap:.22em;margin:0 -.02em;opacity:1!important}
+#bigTime .c i{display:block;width:.15em;height:.15em;border-radius:50%;background:#e8e8ea}
 
-            --bg-gradient: linear-gradient(135deg, #fbcfe8 0%, #f3e8ff 100%);
-            --card-bg: rgba(255, 255, 255, 0.65);
-            --card-border: rgba(255, 255, 255, 0.85);
-            --text-main: #4a2e35;
-            --text-muted: #8c6a75;
-            --accent: #ff6584;
-            --accent-glow: rgba(255, 101, 132, 0.35);
-            --clock-face: #ffffff;
-            --hand-hour: #ff6584;
-            --hand-min: #8b5cf6;
-            --hand-sec: #f59e0b;
-        }
+/* ---------- Controls (fade out like the real thing) ---------- */
+.hud{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 10px);
+  display:flex;gap:8px;align-items:center;z-index:5;
+  padding:6px;border-radius:999px;background:rgba(40,40,44,.85);
+  -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  transition:opacity .3s ease;
+}
+.hud.hide{opacity:0;pointer-events:none}
+.hud button{
+  width:38px;height:38px;border-radius:50%;border:0;background:rgba(255,255,255,.12);
+  color:#fff;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;
+}
+.hud button:active{background:rgba(255,255,255,.3)}
+.hud button.on{background:#fff;color:#000}
+.sw{width:22px;height:22px;border-radius:50%;background:var(--accent);border:2px solid #fff}
+#alarmPanel{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;
+  background:rgba(34,34,38,.96);border-radius:22px;padding:16px;display:none;
+  flex-direction:column;gap:12px;align-items:center;min-width:220px;
+}
+#alarmPanel.open{display:flex}
+#alarmPanel input{
+  font:600 30px "Barlow Condensed",sans-serif;text-align:center;color:#fff;
+  background:#111;border:0;border-radius:12px;padding:6px 10px;width:150px;
+}
+#alarmPanel .row{display:flex;gap:8px;width:100%}
+#alarmPanel .row button{
+  flex:1;padding:10px;border:0;border-radius:12px;font-size:15px;font-weight:600;
+  background:#3a3a3e;color:#fff;
+}
+#alarmPanel .row button.go{background:#ff9f0a;color:#000}
 
-        /* 1. Soft Rose (Strawberry) */
-        body.theme-rose {
-            --bg-gradient: linear-gradient(135deg, #fbcfe8 0%, #ffe4e6 50%, #f3e8ff 100%);
-            --card-bg: rgba(255, 255, 255, 0.65);
-            --card-border: rgba(255, 255, 255, 0.9);
-            --text-main: #4d2331;
-            --text-muted: #8d5668;
-            --accent: #ff4d6d;
-            --accent-glow: rgba(255, 77, 109, 0.35);
-            --clock-face: #fffbfd;
-            --hand-hour: #ff4d6d;
-            --hand-min: #c77dff;
-            --hand-sec: #ffb703;
-        }
+/* ---------- Overlays ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:20;background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;
+}
+.overlay.gone{display:none}
+.overlay h2{font:600 26px -apple-system,sans-serif;color:#fff}
+.overlay p{font-size:13px;color:#8e8e93;max-width:280px}
+.overlay .row{display:flex;gap:12px}
+.overlay button{
+  border:0;border-radius:999px;padding:12px 26px;font-size:16px;font-weight:600;background:#fff;color:#000;
+}
+.overlay button.alt{background:#3a3a3e;color:#ff9f0a}
+#ring h2{font-size:34px;color:#ff9f0a}
 
-        /* 2. Matcha Cream */
-        body.theme-matcha {
-            --bg-gradient: linear-gradient(135deg, #dcfce7 0%, #e8f5e9 50%, #f0fdf4 100%);
-            --card-bg: rgba(255, 255, 255, 0.7);
-            --card-border: rgba(187, 247, 208, 0.9);
-            --text-main: #14532d;
-            --text-muted: #367d52;
-            --accent: #22c55e;
-            --accent-glow: rgba(34, 197, 94, 0.35);
-            --clock-face: #fbfdfb;
-            --hand-hour: #16a34a;
-            --hand-min: #4ade80;
-            --hand-sec: #f59e0b;
-        }
-
-        /* 3. Dreamy Lavender */
-        body.theme-lavender {
-            --bg-gradient: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 50%, #fae8ff 100%);
-            --card-bg: rgba(255, 255, 255, 0.7);
-            --card-border: rgba(233, 213, 255, 0.9);
-            --text-main: #581c87;
-            --text-muted: #9333ea;
-            --accent: #a855f7;
-            --accent-glow: rgba(168, 85, 247, 0.35);
-            --clock-face: #fdfbfd;
-            --hand-hour: #9333ea;
-            --hand-min: #c084fc;
-            --hand-sec: #f43f5e;
-        }
-
-        /* 4. Honey Warm */
-        body.theme-honey {
-            --bg-gradient: linear-gradient(135deg, #fef3c7 0%, #ffedd5 50%, #fef08a 100%);
-            --card-bg: rgba(255, 255, 255, 0.75);
-            --card-border: rgba(254, 215, 170, 0.9);
-            --text-main: #78350f;
-            --text-muted: #b45309;
-            --accent: #f59e0b;
-            --accent-glow: rgba(245, 158, 11, 0.35);
-            --clock-face: #fffdfa;
-            --hand-hour: #d97706;
-            --hand-min: #fbbf24;
-            --hand-sec: #ef4444;
-        }
-
-        /* 5. Cyber Pink */
-        body.theme-cyber {
-            --bg-gradient: linear-gradient(135deg, #180828 0%, #2a0845 50%, #4a0e4e 100%);
-            --card-bg: rgba(42, 8, 69, 0.65);
-            --card-border: rgba(244, 114, 182, 0.3);
-            --text-main: #f472b6;
-            --text-muted: #c084fc;
-            --accent: #ec4899;
-            --accent-glow: rgba(236, 72, 153, 0.45);
-            --clock-face: #120420;
-            --hand-hour: #f472b6;
-            --hand-min: #a855f7;
-            --hand-sec: #38bdf8;
-        }
-
-        /* 6. iOS StandBy OLED Nightstand Red */
-        body.theme-nightstand {
-            --bg-gradient: #020001;
-            --card-bg: rgba(20, 2, 5, 0.85);
-            --card-border: rgba(255, 42, 75, 0.3);
-            --text-main: #ff2a4b;
-            --text-muted: #b31d34;
-            --accent: #ff2a4b;
-            --accent-glow: rgba(255, 42, 75, 0.5);
-            --clock-face: #080103;
-            --hand-hour: #ff2a4b;
-            --hand-min: #ff5c75;
-            --hand-sec: #ff2a4b;
-        }
-
-        /* iOS Bounce Prevention & Fixed Viewport */
-        html, body {
-            position: fixed;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            height: -webkit-fill-available;
-            height: 100dvh;
-            overflow: hidden;
-            overscroll-behavior: none;
-            touch-action: manipulation;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-tap-highlight-color: transparent;
-            background: var(--bg-gradient);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            transition: background 0.4s ease, color 0.4s ease;
-        }
-
-        /* Glassmorphism Cards for iPhone 7 Landscape Constraints */
-        .glass-panel {
-            background: var(--card-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1.5px solid var(--card-border);
-            box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.1), 0 0 16px var(--accent-glow);
-            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
-        }
-
-        .btn-touch {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            color: var(--text-main);
-            transition: transform 0.12s ease, background 0.2s ease;
-        }
-        .btn-touch:active {
-            transform: scale(0.92);
-        }
-        .btn-active-glow {
-            background: var(--accent) !important;
-            color: #ffffff !important;
-            border-color: var(--accent) !important;
-            box-shadow: 0 3px 10px var(--accent-glow);
-        }
-
-        /* HUD Overlay Auto-Hide Fading */
-        .hud-overlay {
-            transition: opacity 0.35s ease, transform 0.35s ease;
-        }
-        .hud-hidden {
-            opacity: 0;
-            transform: translateY(-8px);
-            pointer-events: none;
-        }
-
-        .font-digits {
-            font-family: 'Fredoka', sans-serif;
-            font-feature-settings: "tnum";
-            font-variant-numeric: tabular-nums;
-        }
-
-        /* Pulse glow animation for wake lock active badge */
-        @keyframes pulseGlow {
-            0%, 100% { opacity: 1; filter: drop-shadow(0 0 4px rgba(16, 185, 129, 0.6)); }
-            50% { opacity: 0.6; filter: drop-shadow(0 0 1px rgba(16, 185, 129, 0.2)); }
-        }
-        .animate-pulse-glow {
-            animation: pulseGlow 2s infinite ease-in-out;
-        }
-
-        /* Custom Scrollbar Removal */
-        ::-webkit-scrollbar { display: none; }
-    </style>
+/* Portrait fallback: stack */
+@media (orientation:portrait){
+  #classic{flex-direction:column;gap:3vh}
+  .time{font-size:34vw}
+  .side{height:auto;min-width:0;width:80vw;flex-direction:row;align-items:flex-end;font-size:5vw}
+  #bigTime{font-size:46vw;flex-direction:column}
+}
+</style>
 </head>
-<body class="theme-rose flex flex-col justify-between relative inset-0 w-full h-full p-1.5 sm:p-2">
+<body>
 
-    <canvas id="bgCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
-
-    <!-- Invisible HTML5 MP4 base64 video loop used to trigger iOS Safari permanent keep-awake -->
-    <video id="noSleepVideo" 
-           playsinline 
-           webkit-playsinline 
-           muted 
-           loop 
-           aria-hidden="true" 
-           class="fixed top-0 left-0 w-1 h-1 opacity-0 pointer-events-none z-0">
-        <!-- Minimal valid 0.5s silent H.264 base64 MP4 video stream -->
-        <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb20xaXNvMmF2YzEAAAAIZmcmZWUAAAA2bWRhdAEEAAYAAAAAH//gAAAAI21vb3YAAAAlbWhkZAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAABAAAAAA" type="video/mp4">
-    </video>
-
-    <div id="initialActivationModal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 transition-opacity duration-300 p-4">
-        <div class="glass-panel rounded-3xl p-5 max-w-xs w-full text-center space-y-3 border-2 border-pink-400 shadow-2xl relative overflow-hidden">
-            <div class="w-14 h-14 mx-auto rounded-full bg-gradient-to-tr from-pink-500 to-purple-500 text-white flex items-center justify-center text-2xl shadow-lg animate-bounce">
-                <i class="fa-solid fa-bolt"></i>
-            </div>
-            <div>
-                <h2 class="text-lg font-bold font-fredoka text-pink-500">Lock Awake Mode 💕</h2>
-                <p class="text-[11px] font-quicksand font-semibold opacity-80 mt-1">
-                    Tap below to lock screen awake, enable audio chimes, & activate StandBy Mode!
-                </p>
-            </div>
-            <button onclick="activatePermanentKeepAwake()" class="btn-touch btn-active-glow px-4 py-2.5 rounded-xl font-bold text-xs w-full shadow-lg flex items-center justify-center gap-2">
-                <i class="fa-solid fa-power-off"></i> Enable Lock Awake Engine
-            </button>
-            <div class="text-[9px] opacity-60 font-medium">Compatible with iPhone 7 (iOS 15 Safari & Chrome)</div>
-        </div>
+<div id="stage">
+  <!-- Classic -->
+  <div id="classic" class="view on">
+    <div class="time" id="time"></div>
+    <div class="side">
+      <div>
+        <div><b id="dow">MON</b><span id="dom">5</span></div>
+        <div class="sub" id="sub"></div>
+      </div>
+      <div class="alarm" id="alarmInfo">
+        <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 100 16 8 8 0 000-16zm.9 8.4l-3.2 1.9-.7-1.2 2.6-1.5V7h1.3zM3.5 7.2l3.4-3-1-1.2-3.6 3.1zm17 0l-1.8-1.9-1 1.2 3.4 3z" fill-rule="evenodd"/></svg>
+        <span id="alarmTxt"></span>
+      </div>
     </div>
-
-    <div id="mainContainer" class="relative z-10 flex flex-col justify-between h-full w-full max-w-full mx-auto" onclick="handleTapToToggleHUD(event)">
-
-        <!-- TOP COMPACT HUD DOCK BAR (Optimized for iPhone 7 Landscape Height) -->
-        <header id="hudHeader" class="hud-overlay flex items-center justify-between w-full glass-panel rounded-full px-3 py-1 text-xs shadow-sm z-30 shrink-0 mb-1">
-            
-            <!-- Left: StandBy Title & Live Keep-Awake Status Badge -->
-            <div class="flex items-center space-x-1.5">
-                <div class="w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center text-[10px] shadow">
-                    <i class="fa-solid fa-mobile-screen"></i>
-                </div>
-                <span class="font-bold tracking-tight text-[11px] hidden xs:inline">StandBy Dock</span>
-                
-                <!-- Live Screen Awake Status Indicator -->
-                <button onclick="toggleWakeLock()" id="wakeStatusBadge" class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer">
-                    <i class="fa-solid fa-bolt text-[8px] animate-pulse-glow"></i>
-                    <span id="wakeStatusText">⚡ Awake Locked</span>
-                </button>
-            </div>
-
-            <!-- Center: Display Mode Switcher -->
-            <div class="flex items-center bg-black/5 dark:bg-white/10 p-0.5 rounded-full gap-0.5 text-[11px]">
-                <button onclick="setDisplayMode('digital')" id="modeBtn-digital" class="px-2.5 py-0.5 rounded-full font-bold transition-all btn-active-glow">
-                    Digital
-                </button>
-                <button onclick="setDisplayMode('analog')" id="modeBtn-analog" class="px-2.5 py-0.5 rounded-full font-bold transition-all opacity-70">
-                    Analog
-                </button>
-                <button onclick="toggleNightstandMode()" id="modeBtn-nightstand" class="px-2 py-0.5 rounded-full font-bold transition-all text-red-500 hover:bg-red-500/10" title="Nightstand Mode">
-                    <i class="fa-solid fa-moon"></i>
-                </button>
-            </div>
-
-            <!-- Right: Head Accessory & Theme Selectors -->
-            <div class="flex items-center space-x-1">
-                <button onclick="cycleHeadAccessory()" class="btn-touch w-6 h-6 rounded-full flex items-center justify-center text-[10px]" title="Ear Accessory">
-                    <i id="earIcon" class="fa-solid fa-paw text-pink-500"></i>
-                </button>
-                <button onclick="toggleThemeMenu()" class="btn-touch w-6 h-6 rounded-full flex items-center justify-center text-[10px]" title="Themes">
-                    <i class="fa-solid fa-palette text-purple-500"></i>
-                </button>
-                <button onclick="togglePseudoFullscreen()" class="btn-touch w-6 h-6 rounded-full flex items-center justify-center text-[10px]" title="Expand View">
-                    <i class="fa-solid fa-expand"></i>
-                </button>
-            </div>
-        </header>
-
-        <div id="themeDropdown" class="hidden absolute top-9 right-2 z-50 glass-panel rounded-2xl p-2 shadow-xl w-44 flex flex-col gap-1 text-[11px] font-bold">
-            <div class="text-[9px] text-muted uppercase tracking-wider px-1 py-0.5">Select Theme</div>
-            <button onclick="applyTheme('rose')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40">
-                <span class="w-3 h-3 rounded-full bg-pink-400"></span> Soft Rose
-            </button>
-            <button onclick="applyTheme('matcha')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40">
-                <span class="w-3 h-3 rounded-full bg-emerald-400"></span> Matcha Cream
-            </button>
-            <button onclick="applyTheme('lavender')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40">
-                <span class="w-3 h-3 rounded-full bg-purple-400"></span> Dreamy Lavender
-            </button>
-            <button onclick="applyTheme('honey')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40">
-                <span class="w-3 h-3 rounded-full bg-amber-400"></span> Honey Warm
-            </button>
-            <button onclick="applyTheme('cyber')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40 text-pink-300">
-                <span class="w-3 h-3 rounded-full bg-pink-600"></span> Cyber Pink
-            </button>
-            <button onclick="applyTheme('nightstand')" class="flex items-center gap-1.5 p-1 rounded-xl hover:bg-white/40 text-red-500">
-                <span class="w-3 h-3 rounded-full bg-red-600"></span> iOS Nightstand Red
-            </button>
-        </div>
-
-        <main class="flex-1 flex flex-row items-center justify-center gap-2 sm:gap-3 w-full h-full min-h-0 overflow-hidden my-auto">
-
-            <!-- LEFT DOCK PANEL: CLOCK DISPLAY -->
-            <div id="clockSection" class="flex-1 flex flex-col items-center justify-center h-full w-1/2 relative min-h-0">
-                
-                <!-- Dynamic Head Ear Accent SVG Overlay -->
-                <div id="earAccentContainer" class="relative w-full flex justify-center -mb-3 z-20 pointer-events-none transition-all duration-300">
-                    <svg id="earAccentSvg" viewBox="0 0 160 45" class="w-36 h-10 drop-shadow-sm">
-                        <!-- Dynamic ears / accessories SVG rendered here -->
-                    </svg>
-                </div>
-
-                <!-- CLOCK DISPLAY 1: BIG CUTE DIGITAL STANDBY -->
-                <div id="digitalClockCard" class="glass-panel rounded-3xl p-3 flex flex-col items-center justify-center w-full h-full shadow-lg relative overflow-hidden group">
-                    
-                    <!-- Cute Status Bar Pill -->
-                    <div class="px-2.5 py-0.5 rounded-full bg-white/40 border border-white/60 text-[10px] font-semibold flex items-center gap-1.5 shadow-xs mb-1">
-                        <span id="batteryIcon"><i class="fa-solid fa-battery-three-quarters text-emerald-500"></i></span>
-                        <span id="batteryText">88%</span>
-                        <span class="opacity-40">•</span>
-                        <span id="weatherText">☀️ 25°C</span>
-                    </div>
-
-                    <!-- Digital Time Digits -->
-                    <div class="flex items-baseline justify-center font-digits font-bold tracking-tight text-5xl sm:text-6xl text-center drop-shadow-xs my-0.5">
-                        <span id="digitalHours">10</span>
-                        <span class="animate-pulse mx-0.5 text-pink-500/80">:</span>
-                        <span id="digitalMinutes">42</span>
-                        <span id="digitalSeconds" class="text-xl ml-1 font-medium opacity-80">35</span>
-                    </div>
-
-                    <!-- Date & AM/PM Banner -->
-                    <div class="flex items-center gap-2 text-[11px] font-semibold">
-                        <span id="digitalAmpm" class="px-2 py-0.5 rounded-lg bg-pink-500 text-white font-bold shadow-xs text-[9px]">AM</span>
-                        <span id="digitalFullDate" class="opacity-90">Monday, Oct 5</span>
-                    </div>
-                </div>
-
-                <!-- CLOCK DISPLAY 2: SWEEPING ANALOG CANVAS -->
-                <div id="analogClockCard" class="hidden glass-panel rounded-3xl p-2 flex flex-col items-center justify-center w-full h-full shadow-lg relative">
-                    <div class="relative w-44 h-44 sm:w-48 sm:h-48 flex items-center justify-center">
-                        <canvas id="analogCanvas" width="240" height="240" class="w-full h-full cursor-pointer" onclick="triggerSparklesFX()"></canvas>
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- RIGHT DOCK PANEL: SWIPABLE / TABBED INTERACTIVE WIDGETS -->
-            <div id="widgetSection" class="flex-1 flex flex-col justify-center h-full w-1/2 relative min-h-0">
-                
-                <!-- Widget Stack Card -->
-                <div id="widgetStack" class="glass-panel rounded-3xl p-3 w-full h-full flex flex-col justify-between shadow-lg relative overflow-hidden"
-                     ontouchstart="handleTouchStart(event)" ontouchend="handleTouchEnd(event)">
-
-                    <!-- WIDGET 1: Calendar Grid & Daily Quote -->
-                    <div id="widgetCard-0" class="widget-card flex flex-col justify-between h-full w-full">
-                        <div class="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-pink-500 flex items-center gap-1">
-                                <i class="fa-solid fa-calendar-day"></i> Calendar
-                            </span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-100 text-pink-600">Today</span>
-                        </div>
-                        <div class="grid grid-cols-7 gap-0.5 text-center text-[10px] font-semibold my-1">
-                            <span class="opacity-50">S</span><span class="opacity-50">M</span><span class="opacity-50">T</span>
-                            <span class="opacity-50">W</span><span class="opacity-50">T</span><span class="opacity-50">F</span>
-                            <span class="opacity-50">S</span>
-                            <div id="calendarDaysGrid" class="contents"></div>
-                        </div>
-                        <div class="p-1.5 rounded-xl bg-white/40 dark:bg-black/20 border border-white/50 text-[10px] font-quicksand italic flex items-center justify-between">
-                            <span id="dailyQuote" class="truncate pr-1">"You are doing amazingly well ✨"</span>
-                            <button onclick="cycleQuote()" class="btn-touch p-1 rounded-lg text-[9px]"><i class="fa-solid fa-rotate"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- WIDGET 2: Alarm Manager -->
-                    <div id="widgetCard-1" class="widget-card hidden flex-col justify-between h-full w-full">
-                        <div class="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-purple-500 flex items-center gap-1">
-                                <i class="fa-solid fa-bell"></i> Cute Alarm
-                            </span>
-                            <span id="alarmCountBadge" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600">0 Active</span>
-                        </div>
-                        <div class="flex items-center gap-1.5 my-1">
-                            <input type="time" id="alarmTimeInput" class="flex-1 px-2 py-1 rounded-xl bg-white/70 border border-purple-200 font-bold text-xs text-center outline-none">
-                            <button onclick="addAlarm()" class="btn-touch btn-active-glow px-3 py-1 rounded-xl font-bold text-[10px]">Set</button>
-                        </div>
-                        <div id="alarmList" class="flex-1 overflow-y-auto space-y-1 my-0.5 pr-0.5 max-h-20">
-                            <!-- Alarms rendered here -->
-                        </div>
-                    </div>
-
-                    <!-- WIDGET 3: Focus Pomodoro Timer -->
-                    <div id="widgetCard-2" class="widget-card hidden flex-col justify-between h-full w-full">
-                        <div class="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-500 flex items-center gap-1">
-                                <i class="fa-solid fa-hourglass-start"></i> Focus Timer
-                            </span>
-                            <span class="text-[10px] font-bold opacity-75">Pomodoro</span>
-                        </div>
-                        <div class="text-center my-0.5">
-                            <div id="timerDisplay" class="text-3xl font-digits font-bold tracking-wider">25:00</div>
-                        </div>
-                        <div class="flex justify-center gap-1.5 my-0.5">
-                            <button onclick="setTimerMins(5)" class="btn-touch px-2 py-0.5 rounded-lg text-[9px] font-bold">+5m</button>
-                            <button onclick="setTimerMins(25)" class="btn-touch px-2 py-0.5 rounded-lg text-[9px] font-bold">25m 🍅</button>
-                            <button onclick="setTimerMins(45)" class="btn-touch px-2 py-0.5 rounded-lg text-[9px] font-bold">45m</button>
-                        </div>
-                        <div class="flex gap-1.5">
-                            <button id="timerToggleBtn" onclick="toggleTimer()" class="flex-1 btn-touch btn-active-glow py-1 rounded-xl font-bold text-[10px] flex items-center justify-center gap-1">
-                                <i id="timerIcon" class="fa-solid fa-play"></i> <span id="timerText">Start Focus</span>
-                            </button>
-                            <button onclick="resetTimer()" class="btn-touch px-2.5 py-1 rounded-xl font-bold text-[10px]"><i class="fa-solid fa-rotate-left"></i></button>
-                        </div>
-                    </div>
-
-                    <!-- WIDGET 4: Ambient Sound Machine -->
-                    <div id="widgetCard-3" class="widget-card hidden flex-col justify-between h-full w-full">
-                        <div class="flex items-center justify-between border-b border-black/5 dark:border-white/10 pb-1">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-sky-500 flex items-center gap-1">
-                                <i class="fa-solid fa-cloud-rain"></i> Sound Generator
-                            </span>
-                            <span id="ambientStatusText" class="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600">Off</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-1.5 my-1">
-                            <button onclick="setAmbientType('rain')" id="ambBtn-rain" class="btn-touch p-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
-                                🌧️ Rain
-                            </button>
-                            <button onclick="setAmbientType('white')" id="ambBtn-white" class="btn-touch p-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
-                                💨 White Noise
-                            </button>
-                        </div>
-                        <div class="flex items-center gap-2 px-1 my-0.5">
-                            <i class="fa-solid fa-volume-low text-[9px] opacity-60"></i>
-                            <input type="range" id="ambientVol" min="0" max="1" step="0.05" value="0.5" oninput="updateAmbientVolume(this.value)" class="flex-1 accent-pink-500 h-1 bg-black/10 rounded-lg cursor-pointer">
-                            <i class="fa-solid fa-volume-high text-[9px] opacity-60"></i>
-                        </div>
-                        <button id="ambientToggleBtn" onclick="toggleAmbientSound()" class="btn-touch btn-active-glow py-1 rounded-xl font-bold text-[10px] flex items-center justify-center gap-1">
-                            <i id="ambientIcon" class="fa-solid fa-play"></i> Play Bedside Rain
-                        </button>
-                    </div>
-
-                    <!-- Widget Pagination Dots -->
-                    <div class="flex justify-center items-center space-x-1 pt-1 border-t border-black/5 dark:border-white/10 shrink-0">
-                        <button onclick="switchWidget(0)" id="dot-0" class="w-4 h-1.5 rounded-full bg-pink-500 transition-all"></button>
-                        <button onclick="switchWidget(1)" id="dot-1" class="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/30 transition-all"></button>
-                        <button onclick="switchWidget(2)" id="dot-2" class="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/30 transition-all"></button>
-                        <button onclick="switchWidget(3)" id="dot-3" class="w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/30 transition-all"></button>
-                    </div>
-
-                </div>
-            </div>
-
-        </main>
-
-        <footer id="hudFooter" class="hud-overlay flex items-center justify-between w-full px-2 py-0.5 text-[10px] font-quicksand font-bold opacity-75 shrink-0">
-            <div class="flex items-center gap-1">
-                <i class="fa-solid fa-hand-pointer text-pink-400"></i>
-                <span>Swipe card or tap to hide HUD</span>
-            </div>
-            <button onclick="toggleWakeLock()" class="hover:underline flex items-center gap-1">
-                <i class="fa-solid fa-bolt text-emerald-500"></i> Keep Awake Active
-            </button>
-        </footer>
-
-    </div>
-
-    <div id="alarmModal" class="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 hidden opacity-0 transition-opacity duration-300">
-        <div class="glass-panel rounded-3xl p-6 max-w-xs w-full mx-4 text-center space-y-3 border-2 border-pink-400 shadow-2xl">
-            <div class="w-12 h-12 mx-auto rounded-full bg-pink-500 text-white flex items-center justify-center text-2xl animate-bounce shadow-lg">
-                <i class="fa-solid fa-bell-ring"></i>
-            </div>
-            <div>
-                <h3 class="text-xl font-bold font-fredoka text-pink-500">Wakey Wakey! 💕</h3>
-                <p id="alarmModalNote" class="text-[11px] font-quicksand font-semibold opacity-80 mt-0.5">Time for your cute routine!</p>
-            </div>
-            <button onclick="stopAlarmRinging()" class="btn-touch btn-active-glow px-4 py-2 rounded-xl font-bold text-xs w-full shadow-lg">
-                Dismiss Alarm ✨
-            </button>
-        </div>
-    </div>
-
-    <script>
-        /* State Initialization */
-        const state = {
-            mode: 'digital',
-            theme: 'rose',
-            headAccessory: 'cat', // 'cat', 'bunny', 'bear', 'bow', 'halo', 'none'
-            currentWidget: 0,
-            isNightstand: false,
-            wakeLockActive: false,
-            nativeWakeLock: null,
-            alarms: [],
-            timer: {
-                totalSecs: 1500,
-                remainingSecs: 1500,
-                isRunning: false,
-                interval: null
-            },
-            ambient: {
-                isPlaying: false,
-                type: 'rain',
-                volume: 0.5,
-                sourceNode: null,
-                gainNode: null
-            }
-        };
-
-        /*
-         * PERMANENT KEEP-AWAKE ENGINE FOR IOS 15 (IPHONE 7)
-         * 1. Plays silent looping base64 HTML5 MP4 video in the background.
-         * 2. Requests native navigator.wakeLock if available.
-         * 3. Self-healing loop on visibilitychange and touch events.
-         */
-        const noSleepVideo = document.getElementById('noSleepVideo');
-
-        async function activatePermanentKeepAwake() {
-            // Dismiss initial modal with fade
-            const modal = document.getElementById('initialActivationModal');
-            modal.classList.add('opacity-0');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-
-            // Unlock Web Audio Context
-            getAudioContext();
-
-            // Trigger NoSleep Engine
-            await startKeepAwakeEngine();
-        }
-
-        async function startKeepAwakeEngine() {
-            state.wakeLockActive = true;
-            let success = false;
-
-            // Method A: Invisible Looping Video Playback (Primary iOS 15 Solution)
-            if (noSleepVideo) {
-                try {
-                    noSleepVideo.currentTime = 0;
-                    await noSleepVideo.play();
-                    success = true;
-                } catch (e) {
-                    console.log("NoSleep video playback error:", e);
-                }
-            }
-
-            // Method B: Native Navigator WakeLock API (For iOS 16.4+ / Modern Webkit)
-            if ('wakeLock' in navigator) {
-                try {
-                    state.nativeWakeLock = await navigator.wakeLock.request('screen');
-                    success = true;
-                } catch (e) {
-                    console.log("Native wakeLock request failed:", e);
-                }
-            }
-
-            updateWakeBadgeUI(true);
-        }
-
-        function stopKeepAwakeEngine() {
-            state.wakeLockActive = false;
-
-            if (noSleepVideo) {
-                noSleepVideo.pause();
-            }
-
-            if (state.nativeWakeLock) {
-                state.nativeWakeLock.release().catch(() => {});
-                state.nativeWakeLock = null;
-            }
-
-            updateWakeBadgeUI(false);
-        }
-
-        function toggleWakeLock() {
-            if (state.wakeLockActive) {
-                stopKeepAwakeEngine();
-            } else {
-                startKeepAwakeEngine();
-            }
-        }
-
-        function updateWakeBadgeUI(isActive) {
-            const badge = document.getElementById('wakeStatusBadge');
-            const text = document.getElementById('wakeStatusText');
-
-            if (isActive) {
-                badge.className = "text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 font-bold border border-emerald-500/30 flex items-center gap-1 transition-all cursor-pointer";
-                text.innerHTML = "⚡ Awake Locked";
-            } else {
-                badge.className = "text-[9px] px-2 py-0.5 rounded-full bg-gray-500/20 text-gray-500 font-bold border border-gray-500/30 flex items-center gap-1 transition-all cursor-pointer opacity-75";
-                text.innerHTML = "🌙 Sleep Allowed";
-            }
-        }
-
-        // AUTO-RECOVERY HEALING LOOPS:
-        // When tab regains visibility or user touches screen, re-play video if it was paused
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && state.wakeLockActive) {
-                startKeepAwakeEngine();
-            }
-        });
-
-        window.addEventListener('focus', () => {
-            if (state.wakeLockActive) {
-                startKeepAwakeEngine();
-            }
-        });
-
-        document.addEventListener('touchstart', () => {
-            if (state.wakeLockActive && noSleepVideo && noSleepVideo.paused) {
-                noSleepVideo.play().catch(() => {});
-            }
-        }, { passive: true });
-
-        // Health check interval every 4 seconds to maintain permanent video keep-alive
-        setInterval(() => {
-            if (state.wakeLockActive && noSleepVideo && noSleepVideo.paused) {
-                noSleepVideo.play().catch(() => {});
-            }
-        }, 4000);
-
-        /* Safe Web Audio API Initialization for iOS Safari */
-        let audioCtx = null;
-
-        function getAudioContext() {
-            if (!audioCtx) {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                audioCtx = new AudioContext();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-            return audioCtx;
-        }
-
-        /* Synthesized Web Audio Chimes */
-        function playCuteChime() {
-            try {
-                const ctx = getAudioContext();
-                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-                notes.forEach((freq, idx) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
-
-                    gain.gain.setValueAtTime(0.18, ctx.currentTime + idx * 0.12);
-                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.12 + 0.35);
-
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-
-                    osc.start(ctx.currentTime + idx * 0.12);
-                    osc.stop(ctx.currentTime + idx * 0.12 + 0.35);
-                });
-            } catch (e) {
-                console.log('Audio Context Error:', e);
-            }
-        }
-
-        /* Synthesized Ambient Noise Generator (Rain & White Noise) */
-        function toggleAmbientSound() {
-            const btn = document.getElementById('ambientToggleBtn');
-            const icon = document.getElementById('ambientIcon');
-            const status = document.getElementById('ambientStatusText');
-
-            if (state.ambient.isPlaying) {
-                stopAmbientSound();
-                btn.classList.remove('btn-active-glow');
-                icon.className = 'fa-solid fa-play';
-                status.textContent = 'Off';
-                status.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-sky-100 text-sky-600';
-            } else {
-                startAmbientSound();
-                btn.classList.add('btn-active-glow');
-                icon.className = 'fa-solid fa-pause';
-                status.textContent = 'Playing';
-                status.className = 'text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-600';
-            }
-        }
-
-        function startAmbientSound() {
-            const ctx = getAudioContext();
-            const bufferSize = 2 * ctx.sampleRate;
-            const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-            const output = noiseBuffer.getChannelData(0);
-
-            let lastOut = 0.0;
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                if (state.ambient.type === 'rain') {
-                    output[i] = (lastOut + (0.02 * white)) / 1.02;
-                    lastOut = output[i];
-                    output[i] *= 3.5;
-                } else {
-                    output[i] = white * 0.12;
-                }
-            }
-
-            const whiteNoise = ctx.createBufferSource();
-            whiteNoise.buffer = noiseBuffer;
-            whiteNoise.loop = true;
-
-            const filter = ctx.createBiquadFilter();
-            filter.type = state.ambient.type === 'rain' ? 'lowpass' : 'bandpass';
-            filter.frequency.setValueAtTime(state.ambient.type === 'rain' ? 650 : 900, ctx.currentTime);
-
-            const gain = ctx.createGain();
-            gain.gain.setValueAtTime(state.ambient.volume, ctx.currentTime);
-
-            whiteNoise.connect(filter);
-            filter.connect(gain);
-            gain.connect(ctx.destination);
-
-            whiteNoise.start();
-
-            state.ambient.sourceNode = whiteNoise;
-            state.ambient.gainNode = gain;
-            state.ambient.isPlaying = true;
-        }
-
-        function stopAmbientSound() {
-            if (state.ambient.sourceNode) {
-                try {
-                    state.ambient.sourceNode.stop();
-                    state.ambient.sourceNode.disconnect();
-                } catch(e){}
-                state.ambient.sourceNode = null;
-            }
-            state.ambient.isPlaying = false;
-        }
-
-        function setAmbientType(type) {
-            state.ambient.type = type;
-            document.getElementById('ambBtn-rain').className = `btn-touch p-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 ${type === 'rain' ? 'btn-active-glow' : ''}`;
-            document.getElementById('ambBtn-white').className = `btn-touch p-1.5 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 ${type === 'white' ? 'btn-active-glow' : ''}`;
-
-            if (state.ambient.isPlaying) {
-                stopAmbientSound();
-                startAmbientSound();
-            }
-        }
-
-        function updateAmbientVolume(val) {
-            state.ambient.volume = parseFloat(val);
-            if (state.ambient.gainNode && audioCtx) {
-                state.ambient.gainNode.gain.setValueAtTime(state.ambient.volume, audioCtx.currentTime);
-            }
-        }
-
-        /* Display Mode & Themes */
-        function setDisplayMode(mode) {
-            state.mode = mode;
-            ['digital', 'analog'].forEach(m => {
-                const btn = document.getElementById(`modeBtn-${m}`);
-                if (m === mode) {
-                    btn.classList.add('btn-active-glow');
-                    btn.classList.remove('opacity-70');
-                } else {
-                    btn.classList.remove('btn-active-glow');
-                    btn.classList.add('opacity-70');
-                }
-            });
-
-            const digitalCard = document.getElementById('digitalClockCard');
-            const analogCard = document.getElementById('analogClockCard');
-
-            if (mode === 'digital') {
-                digitalCard.classList.remove('hidden');
-                analogCard.classList.add('hidden');
-            } else {
-                digitalCard.classList.add('hidden');
-                analogCard.classList.remove('hidden');
-            }
-        }
-
-        function toggleThemeMenu() {
-            document.getElementById('themeDropdown').classList.toggle('hidden');
-        }
-
-        function applyTheme(theme) {
-            state.theme = theme;
-            document.body.className = `theme-${theme} flex flex-col justify-between relative inset-0 w-full h-full p-1.5 sm:p-2`;
-            document.getElementById('themeDropdown').classList.add('hidden');
-
-            state.isNightstand = (theme === 'nightstand');
-            drawAnalogClock();
-        }
-
-        function toggleNightstandMode() {
-            if (state.theme === 'nightstand') {
-                applyTheme('rose');
-            } else {
-                applyTheme('nightstand');
-            }
-        }
-
-        /* Head Ears / Accessories Generator */
-        function cycleHeadAccessory() {
-            const list = ['cat', 'bunny', 'bear', 'bow', 'halo', 'none'];
-            const idx = list.indexOf(state.headAccessory);
-            state.headAccessory = list[(idx + 1) % list.length];
-            renderHeadAccessory();
-        }
-
-        function renderHeadAccessory() {
-            const svg = document.getElementById('earAccentSvg');
-            const icon = document.getElementById('earIcon');
-
-            if (state.headAccessory === 'none') {
-                svg.innerHTML = '';
-                icon.className = 'fa-solid fa-ban text-gray-400';
-                return;
-            }
-
-            let path = '';
-            if (state.headAccessory === 'cat') {
-                icon.className = 'fa-solid fa-cat text-pink-500';
-                path = `
-                    <path d="M 25,40 Q 18,5 38,10 Q 52,18 56,40 Z" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <path d="M 30,35 Q 24,14 38,15 Z" fill="var(--accent)" opacity="0.6"/>
-                    <path d="M 135,40 Q 142,5 122,10 Q 108,18 104,40 Z" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <path d="M 130,35 Q 136,14 122,15 Z" fill="var(--accent)" opacity="0.6"/>
-                `;
-            } else if (state.headAccessory === 'bunny') {
-                icon.className = 'fa-solid fa-paw text-purple-500';
-                path = `
-                    <path d="M 32,40 C 12,0 45,-5 52,40 Z" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <path d="M 35,35 C 22,8 42,4 47,35 Z" fill="var(--accent)" opacity="0.5"/>
-                    <path d="M 128,40 C 148,0 115,-5 108,40 Z" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <path d="M 125,35 C 138,8 118,4 113,35 Z" fill="var(--accent)" opacity="0.5"/>
-                `;
-            } else if (state.headAccessory === 'bear') {
-                icon.className = 'fa-solid fa-shield-cat text-amber-500';
-                path = `
-                    <circle cx="35" cy="25" r="16" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <circle cx="35" cy="25" r="9" fill="var(--accent)" opacity="0.5"/>
-                    <circle cx="125" cy="25" r="16" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2.5"/>
-                    <circle cx="125" cy="25" r="9" fill="var(--accent)" opacity="0.5"/>
-                `;
-            } else if (state.headAccessory === 'bow') {
-                icon.className = 'fa-solid fa-ribbon text-pink-500';
-                path = `
-                    <path d="M 80,24 Q 58,6 58,24 Q 58,42 80,24 Q 102,6 102,24 Q 102,42 80,24 Z" fill="var(--accent)" stroke="var(--card-border)" stroke-width="2"/>
-                    <circle cx="80" cy="24" r="5" fill="#ffffff"/>
-                `;
-            } else if (state.headAccessory === 'halo') {
-                icon.className = 'fa-solid fa-wand-magic-sparkles text-yellow-400';
-                path = `
-                    <ellipse cx="80" cy="18" rx="38" ry="9" fill="none" stroke="#fde047" stroke-width="4" opacity="0.9"/>
-                `;
-            }
-
-            svg.innerHTML = path;
-        }
-
-        /* Canvas Analog Clock Engine */
-        const canvas = document.getElementById('analogCanvas');
-        const ctx = canvas.getContext('2d');
-
-        function drawAnalogClock() {
-            const now = new Date();
-            const width = canvas.width;
-            const height = canvas.height;
-            const radius = width / 2;
-
-            ctx.clearRect(0, 0, width, height);
-
-            const style = getComputedStyle(document.body);
-            const faceBg = style.getPropertyValue('--clock-face').trim() || '#ffffff';
-            const handHourColor = style.getPropertyValue('--hand-hour').trim() || '#ff6584';
-            const handMinColor = style.getPropertyValue('--hand-min').trim() || '#8b5cf6';
-            const handSecColor = style.getPropertyValue('--hand-sec').trim() || '#f59e0b';
-            const textColor = style.getPropertyValue('--text-main').trim() || '#4a2e35';
-
-            ctx.save();
-            ctx.translate(radius, radius);
-
-            ctx.beginPath();
-            ctx.arc(0, 0, radius - 8, 0, 2 * Math.PI);
-            ctx.fillStyle = faceBg;
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = style.getPropertyValue('--card-border').trim();
-            ctx.stroke();
-
-            for (let i = 1; i <= 12; i++) {
-                const angle = (i * Math.PI) / 6;
-                ctx.rotate(angle);
-                ctx.translate(0, -radius + 26);
-                ctx.rotate(-angle);
-
-                ctx.fillStyle = textColor;
-                ctx.font = 'bold 13px "Fredoka", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-
-                const icons = { 12: '🌸', 3: '✨', 6: '🐾', 9: '🎀' };
-                ctx.fillText(icons[i] || i.toString(), 0, 0);
-
-                ctx.rotate(angle);
-                ctx.translate(0, radius - 26);
-                ctx.rotate(-angle);
-            }
-
-            const ms = now.getMilliseconds();
-            const sec = now.getSeconds() + ms / 1000;
-            const min = now.getMinutes() + sec / 60;
-            const hour = (now.getHours() % 12) + min / 60;
-
-            drawHand((hour * Math.PI) / 6, radius * 0.45, 6, handHourColor);
-            drawHand((min * Math.PI) / 30, radius * 0.65, 4, handMinColor);
-            drawHand((sec * Math.PI) / 30, radius * 0.76, 2, handSecColor, true);
-
-            ctx.beginPath();
-            ctx.arc(0, 0, 6, 0, 2 * Math.PI);
-            ctx.fillStyle = handHourColor;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(0, 0, 2, 0, 2 * Math.PI);
-            ctx.fillStyle = '#ffffff';
-            ctx.fill();
-
-            ctx.restore();
-        }
-
-        function drawHand(angle, length, width, color, isSecond = false) {
-            ctx.save();
-            ctx.rotate(angle);
-            ctx.beginPath();
-            ctx.lineWidth = width;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = color;
-
-            ctx.moveTo(0, 8);
-            ctx.lineTo(0, -length);
-            ctx.stroke();
-
-            if (isSecond) {
-                ctx.beginPath();
-                ctx.arc(0, -length - 3, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = color;
-                ctx.fill();
-            }
-            ctx.restore();
-        }
-
-        /* Digital Clock Update Loop */
-        function updateDigitalClock() {
-            const now = new Date();
-            let hours = now.getHours();
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-
-            document.getElementById('digitalHours').textContent = String(hours).padStart(2, '0');
-            document.getElementById('digitalMinutes').textContent = minutes;
-            document.getElementById('digitalSeconds').textContent = seconds;
-            document.getElementById('digitalAmpm').textContent = ampm;
-
-            const dateOptions = { weekday: 'short', month: 'short', day: 'numeric' };
-            document.getElementById('digitalFullDate').textContent = now.toLocaleDateString('en-US', dateOptions);
-
-            checkAlarms(now);
-        }
-
-        /* Battery Status API Wrapper */
-        if ('getBattery' in navigator) {
-            navigator.getBattery().then(battery => {
-                function updateBatteryInfo() {
-                    const level = Math.round(battery.level * 100);
-                    document.getElementById('batteryText').textContent = `${level}%`;
-                }
-                updateBatteryInfo();
-                battery.addEventListener('levelchange', updateBatteryInfo);
-            }).catch(() => {});
-        }
-
-        /* Swipable Side Widgets */
-        function switchWidget(idx) {
-            state.currentWidget = idx;
-            for (let i = 0; i < 4; i++) {
-                const card = document.getElementById(`widgetCard-${i}`);
-                const dot = document.getElementById(`dot-${i}`);
-                if (i === idx) {
-                    card.classList.remove('hidden');
-                    card.classList.add('flex');
-                    dot.className = 'w-4 h-1.5 rounded-full bg-pink-500 transition-all';
-                } else {
-                    card.classList.add('hidden');
-                    card.classList.remove('flex');
-                    dot.className = 'w-1.5 h-1.5 rounded-full bg-black/20 dark:bg-white/30 transition-all';
-                }
-            }
-        }
-
-        let touchStartX = 0;
-        function handleTouchStart(e) {
-            touchStartX = e.touches[0].clientX;
-        }
-
-        function handleTouchEnd(e) {
-            const diffX = e.changedTouches[0].clientX - touchStartX;
-            if (Math.abs(diffX) > 35) {
-                if (diffX < 0) {
-                    switchWidget((state.currentWidget + 1) % 4);
-                } else {
-                    switchWidget((state.currentWidget + 3) % 4);
-                }
-            }
-        }
-
-        /* Mini Calendar & Quotes */
-        function renderCalendar() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = now.getMonth();
-            const today = now.getDate();
-
-            const firstDay = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-            const grid = document.getElementById('calendarDaysGrid');
-            grid.innerHTML = '';
-
-            for (let i = 0; i < firstDay; i++) {
-                grid.innerHTML += `<span></span>`;
-            }
-
-            for (let d = 1; d <= daysInMonth; d++) {
-                if (d === today) {
-                    grid.innerHTML += `<span class="w-4 h-4 mx-auto flex items-center justify-center rounded-full bg-pink-500 text-white font-bold text-[9px] shadow-xs">${d}</span>`;
-                } else {
-                    grid.innerHTML += `<span class="py-0.2 opacity-80">${d}</span>`;
-                }
-            }
-        }
-
-        const quotes = [
-            "\"You are doing amazingly well ✨\"",
-            "\"Take a deep breath & smile 💕\"",
-            "\"Small steps every single day 🌸\"",
-            "\"Stay cozy & focused ☕\"",
-            "\"Sparkle in your own cute way 🌟\""
-        ];
-
-        function cycleQuote() {
-            const q = quotes[Math.floor(Math.random() * quotes.length)];
-            document.getElementById('dailyQuote').textContent = q;
-        }
-
-        /* Alarm & Timer Logic */
-        function addAlarm() {
-            const val = document.getElementById('alarmTimeInput').value;
-            if (!val) return;
-            state.alarms.push({ id: Date.now(), time: val, active: true });
-            renderAlarms();
-        }
-
-        function renderAlarms() {
-            const container = document.getElementById('alarmList');
-            document.getElementById('alarmCountBadge').textContent = `${state.alarms.filter(a => a.active).length} Active`;
-
-            if (state.alarms.length === 0) {
-                container.innerHTML = `<div class="text-center text-[10px] opacity-50 py-1">No active alarms ~</div>`;
-                return;
-            }
-
-            container.innerHTML = state.alarms.map(a => `
-                <div class="flex items-center justify-between p-1 px-2 rounded-lg bg-white/50 border border-white/70 text-[10px] font-bold">
-                    <span>${a.time}</span>
-                    <button onclick="removeAlarm(${a.id})" class="text-red-400 hover:text-red-600"><i class="fa-solid fa-xmark"></i></button>
-                </div>
-            `).join('');
-        }
-
-        function removeAlarm(id) {
-            state.alarms = state.alarms.filter(a => a.id !== id);
-            renderAlarms();
-        }
-
-        function checkAlarms(now) {
-            const hrs = String(now.getHours()).padStart(2, '0');
-            const mins = String(now.getMinutes()).padStart(2, '0');
-            const timeStr = `${hrs}:${mins}`;
-
-            state.alarms.forEach(a => {
-                if (a.active && a.time === timeStr && now.getSeconds() === 0) {
-                    triggerAlarmPopup('Bedside Alarm Ringing!');
-                }
-            });
-        }
-
-        let alarmInterval = null;
-        function triggerAlarmPopup(note) {
-            document.getElementById('alarmModalNote').textContent = note;
-            const modal = document.getElementById('alarmModal');
-            modal.classList.remove('hidden');
-            setTimeout(() => modal.classList.remove('opacity-0'), 10);
-
-            playCuteChime();
-            alarmInterval = setInterval(playCuteChime, 1400);
-            confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-        }
-
-        function stopAlarmRinging() {
-            if (alarmInterval) clearInterval(alarmInterval);
-            const modal = document.getElementById('alarmModal');
-            modal.classList.add('opacity-0');
-            setTimeout(() => modal.classList.add('hidden'), 300);
-        }
-
-        function setTimerMins(m) {
-            state.timer.totalSecs = m * 60;
-            state.timer.remainingSecs = m * 60;
-            updateTimerDisplay();
-        }
-
-        function updateTimerDisplay() {
-            const m = Math.floor(state.timer.remainingSecs / 60);
-            const s = state.timer.remainingSecs % 60;
-            document.getElementById('timerDisplay').textContent = 
-                `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        }
-
-        function toggleTimer() {
-            if (state.timer.isRunning) {
-                clearInterval(state.timer.interval);
-                state.timer.isRunning = false;
-                document.getElementById('timerIcon').className = 'fa-solid fa-play';
-                document.getElementById('timerText').textContent = 'Start Focus';
-            } else {
-                state.timer.isRunning = true;
-                document.getElementById('timerIcon').className = 'fa-solid fa-pause';
-                document.getElementById('timerText').textContent = 'Pause';
-
-                state.timer.interval = setInterval(() => {
-                    state.timer.remainingSecs--;
-                    updateTimerDisplay();
-
-                    if (state.timer.remainingSecs <= 0) {
-                        clearInterval(state.timer.interval);
-                        state.timer.isRunning = false;
-                        document.getElementById('timerIcon').className = 'fa-solid fa-play';
-                        document.getElementById('timerText').textContent = 'Start Focus';
-                        triggerAlarmPopup('Focus Session Complete! 🍅✨');
-                    }
-                }, 1000);
-            }
-        }
-
-        function resetTimer() {
-            clearInterval(state.timer.interval);
-            state.timer.isRunning = false;
-            state.timer.remainingSecs = state.timer.totalSecs;
-            document.getElementById('timerIcon').className = 'fa-solid fa-play';
-            document.getElementById('timerText').textContent = 'Start Focus';
-            updateTimerDisplay();
-        }
-
-        /* Auto-Hiding HUD Overlay */
-        let hudTimer = null;
-        function resetHudTimer() {
-            const header = document.getElementById('hudHeader');
-            const footer = document.getElementById('hudFooter');
-            header.classList.remove('hud-hidden');
-            footer.classList.remove('hud-hidden');
-
-            clearTimeout(hudTimer);
-            hudTimer = setTimeout(() => {
-                header.classList.add('hud-hidden');
-                footer.classList.add('hud-hidden');
-            }, 3000);
-        }
-
-        function handleTapToToggleHUD(e) {
-            if (e.target.closest('button, input, canvas, .glass-panel')) {
-                resetHudTimer();
-                return;
-            }
-            const header = document.getElementById('hudHeader');
-            if (header.classList.contains('hud-hidden')) {
-                resetHudTimer();
-            } else {
-                header.classList.add('hud-hidden');
-                document.getElementById('hudFooter').classList.add('hud-hidden');
-            }
-        }
-
-        /* Pseudo Fullscreen for Safari iPhone */
-        function togglePseudoFullscreen() {
-            if (document.documentElement.requestFullscreen) {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(() => {});
-                } else {
-                    document.exitFullscreen();
-                }
-            } else {
-                window.scrollTo(0, 1);
-            }
-        }
-
-        /* Background Particle System */
-        const bgCanvas = document.getElementById('bgCanvas');
-        const bgCtx = bgCanvas.getContext('2d');
-        let particles = [];
-
-        function resizeCanvas() {
-            bgCanvas.width = window.innerWidth;
-            bgCanvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        class Particle {
-            constructor(x, y) {
-                this.x = x || Math.random() * bgCanvas.width;
-                this.y = y || Math.random() * bgCanvas.height;
-                this.size = Math.random() * 5 + 2;
-                this.speedX = (Math.random() - 0.5) * 0.5;
-                this.speedY = -Math.random() * 0.5 - 0.2;
-                this.symbol = Math.random() > 0.5 ? '🌸' : '✨';
-                this.opacity = Math.random() * 0.4 + 0.3;
-            }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                if (this.y < -15) {
-                    this.y = bgCanvas.height + 15;
-                    this.x = Math.random() * bgCanvas.width;
-                }
-            }
-            draw() {
-                bgCtx.save();
-                bgCtx.globalAlpha = this.opacity;
-                bgCtx.font = `${this.size * 1.4}px serif`;
-                bgCtx.fillText(this.symbol, this.x, this.y);
-                bgCtx.restore();
-            }
-        }
-
-        for (let i = 0; i < 15; i++) particles.push(new Particle());
-
-        function triggerSparklesFX() {
-            playCuteChime();
-            for (let i = 0; i < 8; i++) {
-                particles.push(new Particle(bgCanvas.width / 2, bgCanvas.height / 2));
-            }
-        }
-
-        /* Main Game Loop */
-        function loop() {
-            updateDigitalClock();
-            drawAnalogClock();
-
-            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
-
-            requestAnimationFrame(loop);
-        }
-
-        window.onload = function() {
-            renderHeadAccessory();
-            renderCalendar();
-            renderAlarms();
-            resetHudTimer();
-            loop();
-        };
-    </script>
+  </div>
+
+  <!-- Big -->
+  <div id="big" class="view">
+    <div id="bigTime"></div>
+  </div>
+</div>
+
+<div class="hud" id="hud">
+  <button id="bStyle" title="Style">Aa</button>
+  <button id="bColor" title="Color"><span class="sw"></span></button>
+  <button id="bNight" title="Night mode">&#9790;</button>
+  <button id="bAlarm" title="Alarm">&#9201;</button>
+  <button id="bAwake" title="Keep awake">&#9728;</button>
+</div>
+
+<div id="alarmPanel">
+  <input type="time" id="alarmInput" value="07:00">
+  <div class="row">
+    <button id="aClear">Clear</button>
+    <button id="aSave" class="go">Save</button>
+  </div>
+</div>
+
+<div class="overlay" id="start">
+  <h2>StandBy</h2>
+  <p>Tap to keep the screen awake and enable alarm sound. Swipe left or right to change style, tap the screen to show controls.</p>
+  <button id="startBtn">Start</button>
+</div>
+
+<div class="overlay gone" id="ring">
+  <h2>Alarm</h2>
+  <div class="row">
+    <button class="alt" id="snooze">Snooze</button>
+    <button id="stop">Stop</button>
+  </div>
+</div>
+
+<!-- Silent looping video: iOS keep-awake trick (replace src with your own valid tiny MP4 if the screen still sleeps) -->
+<video id="nosleep" playsinline webkit-playsinline muted loop aria-hidden="true"
+       style="position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none">
+  <source src="data:video/mp4;base64,AAAAHGZ0eXBpc29tAAAAAGlzb20xaXNvMmF2YzEAAAAIZmcmZWUAAAA2bWRhdAEEAAYAAAAAH//gAAAAI21vb3YAAAAlbWhkZAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAABAAAAAA" type="video/mp4">
+</video>
+
+<script>
+const COLORS = ['#b9c4ff','#6fba6f','#ffffff','#ffb340','#ff7ab6'];
+const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const $ = id => document.getElementById(id);
+
+let S = { style:0, color:0, night:false, alarm:'', awake:false };
+try { Object.assign(S, JSON.parse(localStorage.getItem('standby') || '{}')); } catch(e){}
+S.awake = false;
+const save = () => { try { localStorage.setItem('standby', JSON.stringify(S)); } catch(e){} };
+
+/* ---------- Render ---------- */
+function applyLook(){
+  document.documentElement.style.setProperty('--accent', COLORS[S.color]);
+  document.body.classList.toggle('night', S.night);
+  $('bNight').classList.toggle('on', S.night);
+  $('bAwake').classList.toggle('on', S.awake);
+  $('classic').classList.toggle('on', S.style === 0);
+  $('big').classList.toggle('on', S.style === 1);
+  renderAlarm();
+}
+
+function fmt12(t){
+  const [h,m] = t.split(':').map(Number);
+  return `${h%12||12}:${String(m).padStart(2,'0')}<small>${h>=12?'PM':'AM'}</small>`;
+}
+function renderAlarm(){
+  $('alarmInfo').classList.toggle('on', !!S.alarm);
+  if (S.alarm) $('alarmTxt').innerHTML = fmt12(S.alarm);
+}
+
+let lastKey = '';
+function tick(){
+  const n = new Date();
+  const h = n.getHours()%12 || 12;
+  const m = String(n.getMinutes()).padStart(2,'0');
+  const key = h + ':' + m;
+  if (key !== lastKey){
+    lastKey = key;
+    const hs = String(h).split('').map(c => `<span class="d">${c}</span>`).join('');
+    const ms = m.split('').map(c => `<span class="d">${c}</span>`).join('');
+    $('time').innerHTML = `${hs}<span class="colon"><i></i><i></i></span>${ms}`;
+    $('bigTime').innerHTML = String(h).split('').map(c=>`<span>${c}</span>`).join('') +
+      `<span class="c"><i></i><i></i></span>` + m.split('').map(c=>`<span>${c}</span>`).join('');
+    $('dow').textContent = DAYS[n.getDay()];
+    $('dom').textContent = n.getDate();
+    checkAlarm(n);
+  }
+}
+setInterval(tick, 1000);
+
+/* ---------- Alarm ---------- */
+let snoozeAt = '', firedKey = '', ringTimer = null;
+function checkAlarm(n){
+  const hhmm = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+  if (firedKey === hhmm) return;
+  if ((S.alarm && S.alarm === hhmm) || snoozeAt === hhmm){
+    firedKey = hhmm; snoozeAt = '';
+    ring();
+  }
+}
+function beep(){
+  try{
+    const c = ctx(), t = c.currentTime;
+    [880,1100,880,1100].forEach((f,i)=>{
+      const o = c.createOscillator(), g = c.createGain();
+      o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(.25,t+i*.18);
+      g.gain.exponentialRampToValueAtTime(.001,t+i*.18+.15);
+      o.connect(g); g.connect(c.destination);
+      o.start(t+i*.18); o.stop(t+i*.18+.16);
+    });
+  }catch(e){}
+}
+function ring(){
+  $('ring').classList.remove('gone');
+  beep(); ringTimer = setInterval(beep, 1500);
+}
+function endRing(){
+  clearInterval(ringTimer); ringTimer = null;
+  $('ring').classList.add('gone');
+}
+$('stop').onclick = endRing;
+$('snooze').onclick = () => {
+  endRing();
+  const n = new Date(Date.now() + 9*60000);
+  snoozeAt = String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+};
+
+let _ctx = null;
+function ctx(){
+  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+  if (_ctx.state === 'suspended') _ctx.resume();
+  return _ctx;
+}
+
+/* ---------- Keep awake ---------- */
+const vid = $('nosleep');
+let wl = null;
+async function awakeOn(){
+  S.awake = true;
+  try { vid.currentTime = 0; await vid.play(); } catch(e){}
+  if ('wakeLock' in navigator){ try { wl = await navigator.wakeLock.request('screen'); } catch(e){} }
+  applyLook();
+}
+function awakeOff(){
+  S.awake = false;
+  vid.pause();
+  if (wl){ wl.release().catch(()=>{}); wl = null; }
+  applyLook();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.awake) awakeOn(); });
+setInterval(() => { if (S.awake && vid.paused) vid.play().catch(()=>{}); }, 4000);
+
+/* ---------- Controls ---------- */
+let hudT = null;
+function showHud(){
+  $('hud').classList.remove('hide');
+  clearTimeout(hudT);
+  hudT = setTimeout(() => { $('hud').classList.add('hide'); }, 3500);
+}
+$('stage').addEventListener('click', () => {
+  $('alarmPanel').classList.remove('open');
+  if ($('hud').classList.contains('hide')) showHud();
+  else { $('hud').classList.add('hide'); clearTimeout(hudT); }
+});
+$('hud').addEventListener('click', e => { e.stopPropagation(); showHud(); });
+
+$('bStyle').onclick = () => { S.style = (S.style + 1) % 2; save(); applyLook(); };
+$('bColor').onclick = () => { S.color = (S.color + 1) % COLORS.length; S.night = false; save(); applyLook(); };
+$('bNight').onclick = () => { S.night = !S.night; save(); applyLook(); };
+$('bAwake').onclick = () => S.awake ? awakeOff() : awakeOn();
+$('bAlarm').onclick = () => {
+  if (S.alarm) $('alarmInput').value = S.alarm;
+  $('alarmPanel').classList.toggle('open');
+};
+$('aSave').onclick = () => {
+  S.alarm = $('alarmInput').value || ''; save(); renderAlarm();
+  $('alarmPanel').classList.remove('open');
+};
+$('aClear').onclick = () => {
+  S.alarm = ''; save(); renderAlarm();
+  $('alarmPanel').classList.remove('open');
+};
+
+/* Swipe to change style */
+let sx = 0;
+document.addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, {passive:true});
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - sx;
+  if (Math.abs(dx) > 50 && !e.target.closest('#alarmPanel, .hud, .overlay')){
+    S.style = (S.style + (dx < 0 ? 1 : 1)) % 2; save(); applyLook();
+  }
+}, {passive:true});
+
+/* Start gate (needed for audio + video playback on iOS) */
+$('startBtn').onclick = async () => {
+  $('start').classList.add('gone');
+  ctx();
+  await awakeOn();
+  showHud();
+};
+
+applyLook(); tick(); showHud();
+</script>
 </body>
 </html>
